@@ -56,7 +56,7 @@ Enter the part (1 or 2):
 1
 ```
 
-### 4. Benchmark Your Solution (Optional)
+### 4. Benchmark Your Solution
 
 To measure performance:
 ```
