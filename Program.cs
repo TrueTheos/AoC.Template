@@ -69,6 +69,11 @@ public class Program
         }
     }
 
+    private static string GetProjectRoot([System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = "")
+    {
+        return Path.GetDirectoryName(sourceFilePath)!;
+    }
+    
     private static void RunBenchmark(int year, int day, int part)
     {
         BenchmarkRunnerClass.ConfigureForSpecificYearDayAndPart(year, day, part);
@@ -92,12 +97,27 @@ public class Program
 
     private static string ReadInputFile(int year, int day)
     {
-        string projectDir = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)!
-            .Parent!.Parent!.Parent!.FullName;
-        string filePath = Path.Combine(projectDir, year.ToString(), "Inputs", $"Day{day}.txt");
+        string projectRoot = GetProjectRoot();
+        string yearFolder = Path.Combine(projectRoot, year.ToString());
+        string inputsFolder = Path.Combine(yearFolder, "Inputs");
+        string filePath = Path.Combine(inputsFolder, $"Day{day}.txt");
         
         if (!File.Exists(filePath))
+        {
+            Console.WriteLine($"Failed to find input file.");
+            Console.WriteLine($"  Expected path: {filePath}");
+            Console.WriteLine($"  Project root: {projectRoot}");
+            Console.WriteLine($"  Year folder exists: {Directory.Exists(yearFolder)}");
+            Console.WriteLine($"  Inputs folder exists: {Directory.Exists(inputsFolder)}");
+            
+            if (Directory.Exists(inputsFolder))
+            {
+                var files = Directory.GetFiles(inputsFolder, "*.txt");
+                Console.WriteLine($"  Available files in Inputs folder: {(files.Length > 0 ? string.Join(", ", files.Select(Path.GetFileName)) : "none")}");
+            }
+            
             throw new FileNotFoundException($"Input file not found: {filePath}");
+        }
         
         return File.ReadAllText(filePath);
     }
@@ -137,18 +157,28 @@ public class BenchmarkRunnerClass
     {
         if (_days.TryGetValue((Year, Day), out Type dayType))
         {
-            string benchmarkDir = AppDomain.CurrentDomain.BaseDirectory;
-        
-            DirectoryInfo current = Directory.GetParent(benchmarkDir);
-            while (current != null && !Directory.Exists(Path.Combine(current.FullName, Year.ToString())))
-            {
-                current = current.Parent;
-            }
-        
-            if (current == null)
-                throw new DirectoryNotFoundException($"Could not find {Year} directory");
+            string projectRoot = GetProjectRoot();
+            string yearFolder = Path.Combine(projectRoot, Year.ToString());
+            string inputsFolder = Path.Combine(yearFolder, "Inputs");
+            string filePath = Path.Combine(inputsFolder, $"Day{Day}.txt");
             
-            string filePath = Path.Combine(current.FullName, Year.ToString(), "Inputs", $"Day{Day}.txt");
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine($"Benchmark setup failed: Input file not found.");
+                Console.WriteLine($"  Expected path: {filePath}");
+                Console.WriteLine($"  Project root: {projectRoot}");
+                Console.WriteLine($"  Year folder exists: {Directory.Exists(yearFolder)}");
+                Console.WriteLine($"  Inputs folder exists: {Directory.Exists(inputsFolder)}");
+                
+                if (Directory.Exists(inputsFolder))
+                {
+                    var files = Directory.GetFiles(inputsFolder, "*.txt");
+                    Console.WriteLine($"  Available files in Inputs folder: {(files.Length > 0 ? string.Join(", ", files.Select(Path.GetFileName)) : "none")}");
+                }
+                
+                throw new FileNotFoundException($"Input file not found: {filePath}");
+            }
+            
             _input = File.ReadAllText(filePath);
             
             _adventDay = Activator.CreateInstance(dayType, _input) as IAdventDay;
@@ -158,6 +188,11 @@ public class BenchmarkRunnerClass
                 adventDayBase.EnableSilentMode();
             }
         }
+    }
+    
+    private static string GetProjectRoot([System.Runtime.CompilerServices.CallerFilePath] string sourceFilePath = "")
+    {
+        return Path.GetDirectoryName(sourceFilePath)!;
     }
 
     [Benchmark]
